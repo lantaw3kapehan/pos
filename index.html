@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Lantaw³ POS</title>
+<meta name="theme-color" content="#FAF6EF">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Lantaw³ POS">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  html,body{margin:0;height:100%;background:#FAF6EF;overflow:hidden;overscroll-behavior:none}
+  #pos{position:fixed;top:env(safe-area-inset-top);left:env(safe-area-inset-left);right:env(safe-area-inset-right);bottom:env(safe-area-inset-bottom);
+       width:calc(100% - env(safe-area-inset-left) - env(safe-area-inset-right));height:calc(100% - env(safe-area-inset-top) - env(safe-area-inset-bottom));border:0;background:#FAF6EF}
+  #splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#FAF6EF;color:#6A3A16;
+          font-family:Rockwell,"Roboto Slab",Georgia,serif;transition:opacity .4s;z-index:2}
+  #splash img{width:180px;height:180px;border-radius:36px}
+  #splash p{margin:14px 0 0;font-size:15px;letter-spacing:.1em}
+  #off{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#2E1C10;color:#fff;
+       font:600 14px system-ui,sans-serif;padding:8px 14px;border-radius:999px;display:none;z-index:3}
+</style>
+</head>
+<body>
+<iframe id="pos" title="Lantaw³ POS" allow="clipboard-write; web-share; autoplay; fullscreen" src="https://script.google.com/macros/s/AKfycbyUdRDSUiJUl579pilRr3Q0lvO0bP4Knuuav8y8JLJDCskq6hOBEgtAgnRp5-Z4-NYK/exec"></iframe>
+<div id="splash"><img src="icon-512.png" alt="Lantaw³"><p>OPENING POS…</p></div>
+<div id="off">No signal — orders are kept and saved when it's back</div>
+<script>
+  var s = document.getElementById('splash');
+  function hide(){ if (!s) return; s.style.opacity = 0; setTimeout(function(){ s && s.remove(); s = null; }, 450); }
+  document.getElementById('pos').addEventListener('load', hide);
+  setTimeout(hide, 15000);
+  function wake(){ try { if ('wakeLock' in navigator && document.visibilityState === 'visible') navigator.wakeLock.request('screen').catch(function(){}); } catch (e) {} }
+  wake(); document.addEventListener('visibilitychange', wake); document.addEventListener('click', wake, {once: true});
+  var off = document.getElementById('off');
+  function net(){ off.style.display = navigator.onLine ? 'none' : 'block'; }
+  addEventListener('online', net); addEventListener('offline', net); net();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
+</script>
+</body>
+</html>
