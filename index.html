@@ -36,8 +36,12 @@
   function wake(){ try { if ('wakeLock' in navigator && document.visibilityState === 'visible') navigator.wakeLock.request('screen').catch(function(){}); } catch (e) {} }
   wake(); document.addEventListener('visibilitychange', wake); document.addEventListener('click', wake, {once: true});
   var off = document.getElementById('off');
-  function net(){ off.style.display = navigator.onLine ? 'none' : 'block'; }
+  // the browser's own "offline" flag is often wrong on Macs/tablets: only show the banner if a real request also fails
+  function ping(){ return fetch('https://www.gstatic.com/generate_204?t=' + Date.now(), {mode: 'no-cors', cache: 'no-store'}); }
+  function net(){ if (navigator.onLine) { off.style.display = 'none'; return; }
+    setTimeout(function(){ ping().then(function(){ off.style.display = 'none'; }, function(){ off.style.display = 'block'; }); }, 3000); }
   addEventListener('online', net); addEventListener('offline', net); net();
+  setInterval(function(){ if (off.style.display === 'block') ping().then(function(){ off.style.display = 'none'; }, function(){}); }, 15000);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
 </script>
 </body>
