@@ -214,7 +214,9 @@ body.shop-BH h1{color:#1D4ED8}
 <!-- 📴 OFFLINE SCREEN: same layout as the POS. Shows only when the POS cannot open (no signal). -->
 <div id="pad">
   <div class="offbar">📴 NO SIGNAL — OFFLINE MODE <span id="pWait"></span>
-    <small>Keep taking orders the same way. Everything is saved on this phone and goes into the POS <b>by itself</b> when signal is back. Do NOT type them again.</small></div>
+    <small>Keep taking orders the same way. Everything is saved on this phone and goes into the POS <b>by itself</b> when signal is back. Do NOT type them again.<br>
+    👉 Only <b>ONE phone/tablet takes orders</b> until signal is back — the barista follows this phone's ☕ To make list (📣 Show = big letters).<br>
+    📶 If someone has mobile data, turn on their hotspot so everyone is back online.</small></div>
   <div class="wrap">
     <div class="brand">
       <img class="logo" id="pLogo" alt="Lantaw" src="icon-192.png">
@@ -546,7 +548,7 @@ body.shop-BH h1{color:#1D4ED8}
     var tag = function (o) { return (o.pay === 'GCash' ? '<span class="gc">GCash</span>' : o.pay !== 'Cash' && o.pay !== 'Walk-in' ? '<span class="pd">' + esc(o.pay) + (owners().indexOf(o.pay) > -1 ? ' payables' : '') + '</span>' : ''); };
     var card = function (o) {
       var w = (nowM - mins(o.at) + 1440) % 1440;
-      return '<div class="ord' + (w >= 10 ? ' late' : '') + '"><div class="no">#' + esc(o.tmp) + '<small>' + esc(o.at) + '</small></div>' +
+      return '<div class="ord' + (w >= 10 ? ' late' : '') + '"><div class="no">#' + esc(o.tmp) + '<small>' + esc(o.at) + '</small><button data-show="' + P.list.indexOf(o) + '" style="margin-top:6px;padding:5px 8px;border-radius:8px;border:1.5px solid var(--tan);background:var(--paper);font-size:12px;font-weight:800;cursor:pointer">📣 Show</button></div>' +
         '<div class="its">' + o.items.map(function (i) { return '<b>' + i.qty + '×</b> ' + esc(i.name); }).join('<br>') + (o.note ? '<div class="onote">📝 ' + esc(o.note) + '</div>' : '') + tag(o) + ' ' + sync(o) +
         '<div class="wait ' + (w >= 10 ? 'long' : w >= 7 ? 'warn' : '') + '">' + (w < 1 ? 'Just now' : 'Waiting ' + w + ' min') + ' · ' + esc(o.shop) + '</div></div>' +
         '<div class="obtns"><button class="srv" data-k="' + P.list.indexOf(o) + '">✓ Served</button></div></div>';
@@ -567,6 +569,7 @@ body.shop-BH h1{color:#1D4ED8}
   setInterval(function () { if (P.shown) renderOrders(); }, 60000);
   $('pMake').onclick = function () { P.mode = 'sale'; renderAll(); $('pRecent').scrollIntoView({behavior: 'smooth', block: 'start'}); };
   $('pOrdList').onclick = function (e) {
+    var sb = e.target.closest('[data-show]'); if (sb) { showBig(P.list[Number(sb.dataset.show)]); return; }
     var b = e.target.closest('.srv'); if (!b) return; var o = P.list[Number(b.dataset.k)]; if (!o) return;
     var undo = !!b.dataset.undo;
     needWho(function () {
@@ -582,6 +585,18 @@ body.shop-BH h1{color:#1D4ED8}
       lsSet(K.list, P.list); renderWait(); renderOrders();
     });
   };
+
+  /* 📣 one order full-screen in big letters (easy to read across the counter) */
+  function showBig(o){
+    if (!o) return;
+    modal('<div style="text-align:center"><div class="eyebrow">LANTAW³ · ' + esc(o.shop) + ' · ORDER</div>' +
+      '<div style="font-size:64px;font-weight:800;line-height:1.05;color:var(--brown);margin:6px 0">#' + esc(o.tmp) + '</div>' +
+      '<div style="font-size:15px;color:var(--muted);margin-bottom:12px">' + esc(o.at) + (o.pay && o.pay !== 'Cash' ? ' · ' + esc(o.pay) : '') + '</div>' +
+      o.items.map(function (i) { return '<div style="font-size:30px;font-weight:800;line-height:1.25;margin:6px 0"><span style="color:var(--brown)">' + i.qty + '×</span> ' + esc(i.name) + '</div>'; }).join('') +
+      (o.note ? '<div class="onote" style="font-size:24px;margin-top:14px;text-align:left">📝 ' + esc(o.note) + '</div>' : '') +
+      '<div class="mnote" style="margin-top:16px">Tap anywhere to close</div></div>');
+    $('pModalBox').onclick = closeModal;
+  }
 
   /* ---------- EXPENSE ---------- */
   function renderExpForm(){
