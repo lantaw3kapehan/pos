@@ -162,7 +162,7 @@
   setInterval(handOver, 10000);
 
   function showPad(on){
-    P.shown = on; $('pad').classList.toggle('on', on);
+    P.shown = on; $('pad').classList.toggle('on', on); frame.style.visibility = on ? 'hidden' : '';   // the POS frame stays loaded behind, just hidden
     if (on) { hide(); off.style.display = 'none'; renderPad(); }
     else toast('✓ Back on the POS — offline pad entries were handed over and are being saved.');
   }
