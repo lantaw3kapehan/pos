@@ -38,8 +38,9 @@
 /* same look as the POS (copied from its styles; the POS also sends its live styles into #posCss) */
 :root{--brown:#6A3A16;--brown-2:#8A5A2E;--tan:#C6A978;--sand:#B7A58A;--bronze:#7A5C2E;--hot:#9A3F16;--cold:#1F5F7A;--food:#6A3A16;--cream:#FAF6EF;--paper:#FFFFFF;--ink:#2E1C10;--muted:#6B5B4A;--line:#E6D9C4;--good:#2E7D32;--bad:#B91C1C;--font:Rockwell,"Rockwell Nova","Roboto Slab",Georgia,serif}
 #pad *,#pModal *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-#pad,#pModal,#pToast{color:var(--ink);font-family:var(--font)}
-#pad button,#pad input,#pad select,#pModal button,#pModal input{font-family:var(--font);color:var(--ink)}
+#pad,#pModal{color:var(--ink);font-family:var(--font)}
+#pToast{color:#fff;font-family:var(--font)}
+:where(#pad,#pModal) :where(button,input,select){font-family:var(--font);color:var(--ink)}
 .wrap{max-width:1180px;margin:0 auto;padding:16px 16px 140px}
 .eyebrow{letter-spacing:.22em;font-size:12px;font-weight:800;color:var(--bronze);text-transform:uppercase}
 .brand{display:flex;align-items:center;gap:14px;margin-bottom:14px}
