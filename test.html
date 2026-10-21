@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Lantaw³ POS TEST</title>
+<meta name="theme-color" content="#FAF6EF">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Lantaw³ POS">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root{--bg:#FAF6EF;--ink:#2E1C10;--brown:#6A3A16;--card:#fff;--line:#E7DCCB;--good:#2F6B1A;--bad:#B91C1C;--warn:#B45309;--bh:#1D4ED8;--pu:#2F6B1A}
+  html,body{margin:0;height:100%;background:var(--bg);overflow:hidden;overscroll-behavior:none;color:var(--ink);font:15px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  #pos{position:fixed;top:env(safe-area-inset-top);left:env(safe-area-inset-left);right:env(safe-area-inset-right);bottom:env(safe-area-inset-bottom);
+       width:calc(100% - env(safe-area-inset-left) - env(safe-area-inset-right));height:calc(100% - env(safe-area-inset-top) - env(safe-area-inset-bottom));border:0;background:var(--bg)}
+  #splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);color:var(--brown);
+          font-family:Rockwell,"Roboto Slab",Georgia,serif;transition:opacity .4s;z-index:2}
+  #splash img{width:180px;height:180px;border-radius:36px}
+  #splash p{margin:14px 0 0;font-size:15px;letter-spacing:.1em}
+  #off{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;
+       font:600 14px system-ui,sans-serif;padding:8px 14px;border-radius:999px;display:none;z-index:3;border:0;max-width:92vw;text-align:center}
+  /* ---------- 📴 offline pad ---------- */
+  #pad{position:fixed;inset:0;z-index:5;background:var(--bg);display:none;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left)}
+  #pad.on{display:flex}
+  .pbar{background:#7C2D12;color:#fff;padding:10px 14px;font-weight:600}
+  .pbar small{display:block;font-weight:400;opacity:.92;margin-top:2px}
+  .ptop{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+  .ptop h1{font:700 17px Rockwell,"Roboto Slab",Georgia,serif;color:var(--brown);margin:0 auto 0 0}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+  .seg button{border:0;background:none;padding:8px 12px;font:600 14px inherit;color:var(--ink);cursor:pointer}
+  .seg button.on{background:var(--brown);color:#fff}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font:600 14px inherit;color:var(--ink);cursor:pointer}
+  .chip.on{background:var(--brown);border-color:var(--brown);color:#fff}
+  .pbody{flex:1;overflow:auto;padding:12px;padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+  .cats{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px}
+  .cats .chip{white-space:nowrap}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:8px}
+  .tile{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px;text-align:left;font:600 14px inherit;color:var(--ink);cursor:pointer;min-height:58px}
+  .tile b{display:block;color:var(--brown);margin-top:4px}
+  .box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}
+  .row:last-child{border-bottom:0}
+  .qty{display:inline-flex;align-items:center;gap:6px}
+  .qty button{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:18px;cursor:pointer}
+  input,select,textarea{font:16px inherit;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);box-sizing:border-box;width:100%}
+  label{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#7A6552;margin:10px 0 4px}
+  .big{width:100%;border:0;border-radius:12px;background:var(--good);color:#fff;font:700 17px inherit;padding:14px;margin-top:12px;cursor:pointer}
+  .big[disabled]{opacity:.45}
+  .tot{font:700 20px Rockwell,Georgia,serif;color:var(--brown)}
+  .muted{color:#7A6552;font-size:13px}
+  .ord{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
+  .ord .no{font:700 18px Rockwell,Georgia,serif;color:var(--brown);min-width:48px}
+  .ord .its{flex:1}
+  .srv{border:0;border-radius:10px;background:var(--good);color:#fff;font:700 14px inherit;padding:9px 12px;cursor:pointer}
+  .srv.done{background:#E7F3E2;color:var(--good)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;z-index:9;display:none;max-width:90vw;text-align:center;font-weight:600}
+  .modal{position:fixed;inset:0;background:rgba(46,28,16,.45);display:none;align-items:center;justify-content:center;z-index:8;padding:16px}
+  .modal.on{display:flex}
+  .mbox{background:#fff;border-radius:16px;padding:16px;max-width:380px;width:100%;max-height:90vh;overflow:auto}
+  .keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+  .keys button{padding:14px 0;font:700 20px inherit;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer}
+  .dots{font-size:26px;letter-spacing:8px;text-align:center;margin:8px 0;min-height:32px}
+  .names{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .warnbox{background:#FFF7ED;border:1px solid #FED7AA;color:#7C2D12;border-radius:12px;padding:10px;margin-top:10px;font-size:14px}
+</style>
+</head>
+<body>
+<iframe id="pos" title="Lantaw³ POS" allow="clipboard-write; web-share; autoplay; fullscreen" src="https://script.google.com/macros/s/AKfycbzk8ZZACW5glnYVMUytjYNJRz7KxsPi64qNIcmIeQ0/dev"></iframe>
+<div id="splash"><img src="icon-512.png" alt="Lantaw³"><p>OPENING POS…</p></div>
+<button id="off">No signal — orders are kept and saved when it's back</button>
+<button id="padBtn" style="position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%);display:none;z-index:4;background:#7C2D12;color:#fff;border:0;border-radius:999px;padding:10px 16px;font:700 15px system-ui,sans-serif" onclick="this.style.display='none';showPad(true)">POS not opening? Tap here for the offline pad</button>
+
+<!-- 📴 OFFLINE PAD: shows only when the POS cannot open (no signal). Entries go into the POS by themselves later. -->
+<div id="pad">
+  <div class="pbar">📴 NO SIGNAL — OFFLINE PAD <span id="pWait"></span>
+    <small>Keep taking orders here. Everything is saved on this phone and goes into the POS <b>by itself</b> when signal is back. Do NOT type these again.</small></div>
+  <div class="ptop">
+    <h1>LANTAW³ · Offline pad</h1>
+    <div class="seg" id="pShop"></div>
+    <button class="chip" id="pWho">On counter: <b id="pWhoName">—</b></button>
+  </div>
+  <div class="ptop" style="padding-top:6px">
+    <div class="seg" id="pTabs">
+      <button data-t="order" class="on">☕ Order</button><button data-t="list">📋 Orders</button><button data-t="exp">🧾 Expense</button><button data-t="time">⏱ Time</button>
+    </div>
+    <button class="chip" id="pRetry">↻ Try the POS again</button>
+  </div>
+  <div class="pbody" id="pBody"></div>
+</div>
+<div class="modal" id="pinM"><div class="mbox" id="pinBox"></div></div>
+<div id="toast"></div>
+
+<script>
+  /* ---------- launcher: splash, screen awake, signal banner ---------- */
+  var POS_URL = 'https://script.google.com/macros/s/AKfycbzk8ZZACW5glnYVMUytjYNJRz7KxsPi64qNIcmIeQ0/dev';
+  var frame = document.getElementById('pos');
+  var s = document.getElementById('splash');
+  function hide(){ if (!s) return; s.style.opacity = 0; setTimeout(function(){ s && s.remove(); s = null; }, 450); }
+  frame.addEventListener('load', hide);
+  setTimeout(hide, 15000);
+  function wake(){ try { if ('wakeLock' in navigator && document.visibilityState === 'visible') navigator.wakeLock.request('screen').catch(function(){}); } catch (e) {} }
+  wake(); document.addEventListener('visibilitychange', wake); document.addEventListener('click', wake, {once: true});
+  var off = document.getElementById('off');
+  // the browser's own "offline" flag is often wrong on Macs/tablets: only show the banner if a real request also fails
+  function ping(){ return fetch('https://www.gstatic.com/generate_204?t=' + Date.now(), {mode: 'no-cors', cache: 'no-store'}); }
+  function net(){ if (navigator.onLine) { off.style.display = 'none'; return; }
+    setTimeout(function(){ ping().then(function(){ off.style.display = 'none'; }, function(){ off.style.display = 'block'; }); }, 3000); }
+  addEventListener('online', net); addEventListener('offline', net); net();
+  setInterval(function(){ if (off.style.display === 'block') ping().then(function(){ off.style.display = 'none'; }, function(){}); }, 15000);
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
+
+  /* ---------- 📴 offline pad ----------
+   * The POS (inside the frame) sends this page a copy of the menu, staff and who is signed in (message 'pos').
+   * If the POS cannot open (no signal), the pad appears. Every pad entry gets its own id. When the POS is back,
+   * the entries are handed to it (message 'pad'); the POS saves them in its own save line and answers 'padAck';
+   * only then are they removed here. The server also ignores any id it has already saved — so nothing is ever
+   * saved twice and nobody types anything again. */
+  var K = {pos: 'pad.pos', jobs: 'pad.jobs', list: 'pad.list', who: 'pad.who', shop: 'pad.shop', n: 'pad.n'};
+  function lsGet(k, d){ try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+  function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  var P = {pos: lsGet(K.pos, null), jobs: lsGet(K.jobs, []), list: lsGet(K.list, []), cart: [], pay: 'Cash', chan: 'Walk-in', cat: 'All', tab: 'order',
+           ePaid: 'Cash', eCat: '', alive: false, src: null, srcOrigin: '', shown: false};
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(x){ return String(x == null ? '' : x).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function peso(n){ return '₱' + (Math.round((Number(n) || 0) * 100) / 100).toLocaleString('en-PH', {maximumFractionDigits: 2}); }
+  function nowMs(){ return Date.now() + ((P.pos && P.pos.offset) || 0); }
+  var fmtD = new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Manila'});
+  var fmtT = new Intl.DateTimeFormat('en-GB', {timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'});
+  function today(){ return fmtD.format(new Date(nowMs())); }
+  function hhmm(){ return fmtT.format(new Date(nowMs())); }
+  function rid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 8) + 'p'; }
+  function toast(t){ var e = $('toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(function(){ e.style.display = 'none'; }, 4200); }
+  function saveJobs(){ if (!lsSet(K.jobs, P.jobs)) toast('⚠ This phone is full — tell Misty'); }
+  function addJob(job){ P.jobs.push(job); saveJobs(); renderWait(); }
+  function renderWait(){ $('pWait').textContent = P.jobs.length ? '· ' + P.jobs.length + ' saved on this phone' : ''; }
+
+  /* messages from the POS frame */
+  window.addEventListener('message', function (e) {
+    if (!/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(e.origin) || !e.data) return;
+    var d = e.data;
+    if (d.lantaw === 'pos') {
+      P.alive = true; P.src = e.source; P.srcOrigin = e.origin; $('padBtn').style.display = 'none';
+      P.pos = d; lsSet(K.pos, d);
+      if (d.who) lsSet(K.who, {name: d.who, date: d.whoDate});
+      handOver();
+    } else if (d.lantaw === 'padAck' && Array.isArray(d.ids)) {
+      var ids = {}; d.ids.forEach(function (i) { ids[i] = 1; });
+      var before = P.jobs.length;
+      P.jobs = P.jobs.filter(function (j) { return !ids[j.payload.reqId]; }); saveJobs(); renderWait();
+      if (before && !P.jobs.length) { P.list = []; lsSet(K.list, P.list); if (P.shown) { showPad(false); } }
+    }
+  });
+  function handOver(){
+    if (!P.alive || !P.src || !P.jobs.length) { if (P.alive && P.shown && !P.jobs.length) showPad(false); return; }
+    try { P.src.postMessage({lantaw: 'pad', jobs: P.jobs}, P.srcOrigin); } catch (e) {}
+  }
+  setInterval(handOver, 10000);
+
+  function showPad(on){
+    P.shown = on; $('pad').classList.toggle('on', on);
+    if (on) { hide(); off.style.display = 'none'; renderPad(); }
+    else toast('✓ Back on the POS — offline pad entries were handed over and are being saved.');
+  }
+  /* show the pad only if the POS did not open AND there is really no signal */
+  function checkStart(){
+    if (P.alive || P.shown) return;
+    ping().then(function () { setTimeout(checkStart, 15000); }, function () { if (!P.alive) showPad(true); });
+  }
+  setTimeout(checkStart, 12000);
+  off.onclick = function () { if (!P.alive) showPad(true); };
+  /* very weak signal: the POS may hang without failing — offer the pad after 25 s */
+  setTimeout(function () { if (!P.alive && !P.shown) $('padBtn').style.display = 'block'; }, 25000);
+  $('pRetry').onclick = function () { P.alive = false; frame.src = POS_URL + '?t=' + Date.now(); toast('Trying to open the POS… the pad stays until it opens.'); setTimeout(function () { if (P.alive) showPad(false); }, 15000); };
+  setInterval(function () {   // while the pad is up: when signal is back, open the POS again behind it
+    if (!P.shown || P.alive) return;
+    ping().then(function () { frame.src = POS_URL + '?t=' + Date.now(); }, function () {});
+  }, 30000);
+
+  /* ---------- pad screens ---------- */
+  function shops(){ return (P.pos && P.pos.shops) || {}; }
+  function shopCode(){ var c = lsGet(K.shop, '') || (P.pos && P.pos.shop) || 'BH'; return shops()[c] ? c : (Object.keys(shops())[0] || 'BH'); }
+  function shop(){ return shops()[shopCode()] || {menu: [], expCats: [], channels: []}; }
+  function who(){ var w = lsGet(K.who, null); return w && w.date === today() ? w.name : ''; }
+  function renderTop(){
+    $('pShop').innerHTML = Object.keys(shops()).sort().map(function (k) { return '<button data-s="' + k + '" class="' + (k === shopCode() ? 'on' : '') + '">' + k + '</button>'; }).join('');
+    $('pWhoName').textContent = who() || 'tap to pick';
+    [].forEach.call($('pTabs').children, function (b) { b.classList.toggle('on', b.dataset.t === P.tab); });
+    renderWait();
+  }
+  $('pShop').onclick = function (e) { var b = e.target.closest('button'); if (!b) return; if (P.cart.length && !confirm('Switch shop and clear this order?')) return; lsSet(K.shop, b.dataset.s); P.cart = []; renderPad(); };
+  $('pTabs').onclick = function (e) { var b = e.target.closest('button'); if (!b) return; P.tab = b.dataset.t; renderPad(); };
+  $('pWho').onclick = function () { pickName(function (n) { lsSet(K.who, {name: n, date: today()}); renderPad(); toast('On counter: ' + n); }); };
+
+  function renderPad(){
+    renderTop();
+    var b = $('pBody');
+    if (!P.pos) { b.innerHTML = '<div class="warnbox"><b>This phone has not opened the POS with signal yet</b>, so it has no menu saved. Please write orders on paper for now, and open the POS on this phone once there is signal so the offline pad works next time.</div>'; return; }
+    if (P.tab === 'order') renderOrder(); else if (P.tab === 'list') renderList(); else if (P.tab === 'exp') renderExp(); else renderTime();
+  }
+  function price(it){ return Math.max(0, it.price - (shopCode() === 'BH' && P.chan === 'Vester' ? 15 : 0)); }
+  function cartTotal(){ return P.cart.reduce(function (a, l) { return a + price(l) * l.qty; }, 0); }
+  function renderOrder(){
+    var sh = shop(), menu = sh.menu || [], q = (P.q || '').toLowerCase();
+    var cats = ['All'].concat(menu.map(function (i) { return i.cat; }).filter(function (c, i, a) { return a.indexOf(c) === i; }));
+    var items = menu.filter(function (i) { return q ? i.name.toLowerCase().indexOf(q) > -1 : (P.cat === 'All' || i.cat === P.cat); });
+    var chans = ['Walk-in'].concat((sh.channels || []).filter(function (c) { return c !== 'Walk-in'; }));
+    var pays = ['Cash', 'GCash'].concat((P.pos.ownerPay || []));
+    var tot = cartTotal();
+    $('pBody').innerHTML =
+      '<input id="pQ" placeholder="Search the menu…" value="' + esc(P.q || '') + '">' +
+      '<div class="cats" style="margin-top:8px">' + cats.map(function (c) { return '<button class="chip' + (c === P.cat && !q ? ' on' : '') + '" data-c="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</div>' +
+      '<div class="tiles">' + items.map(function (i, k) { return '<button class="tile" data-i="' + menu.indexOf(i) + '">' + esc(i.name) + '<b>' + peso(price(i)) + '</b></button>'; }).join('') + '</div>' +
+      '<div class="box"><div class="row"><b>This order</b><span class="tot">' + peso(tot) + '</span></div>' +
+      (P.cart.length ? P.cart.map(function (l, k) { return '<div class="row"><span>' + esc(l.name) + '<br><span class="muted">' + peso(price(l)) + ' each</span></span><span class="qty"><button data-m="' + k + '">−</button><b>' + l.qty + '</b><button data-p="' + k + '">+</button></span></div>'; }).join('') : '<div class="muted">Tap drinks / food above.</div>') +
+      '<label>Channel</label><div class="cats">' + chans.map(function (c) { return '<button class="chip' + (c === P.chan ? ' on' : '') + '" data-ch="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</div>' +
+      (P.chan === 'Foodpanda' || P.chan === 'Vester' ? '<div class="muted">' + esc(P.chan) + ' pays weekly — not in today\'s drawer.</div>' :
+        '<label>Paid with</label><div class="cats">' + pays.map(function (p) { return '<button class="chip' + (p === P.pay ? ' on' : '') + '" data-pay="' + esc(p) + '">' + esc(p === 'Cash' || p === 'GCash' ? p : p + ' payables') + '</button>'; }).join('') + '</div>') +
+      (P.pay === 'Cash' && P.chan === 'Walk-in' ? '<label>Cash received (for change)</label><input id="pCash" inputmode="decimal" type="number" value="' + esc(P.cashIn || '') + '"><div class="muted" id="pChange"></div>' : '') +
+      '<label>Customer request / note</label><input id="pNote" value="' + esc(P.note || '') + '" placeholder="e.g. less sweet">' +
+      '<button class="big" id="pSave"' + (P.cart.length ? '' : ' disabled') + '>Save order ' + peso(tot) + '</button></div>';
+    var qi = $('pQ'); qi.oninput = function () { P.q = qi.value; var pos = qi.selectionStart; renderOrder(); var n = $('pQ'); n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} };
+    if ($('pCash')) $('pCash').oninput = function () { P.cashIn = $('pCash').value; var c = Number(P.cashIn) - cartTotal(); $('pChange').textContent = c > 0 ? 'Change: ' + peso(c) : ''; };
+    $('pNote').oninput = function () { P.note = $('pNote').value; };
+    $('pBody').onclick = function (e) {
+      var t = e.target.closest('button'); if (!t) return;
+      if (t.dataset.c) { P.cat = t.dataset.c; P.q = ''; renderOrder(); }
+      else if (t.dataset.i !== undefined) { var it = menu[Number(t.dataset.i)], ex = P.cart.filter(function (l) { return l.name === it.name; })[0]; if (ex) ex.qty++; else P.cart.push({name: it.name, cat: it.cat, price: it.price, qty: 1}); renderOrder(); }
+      else if (t.dataset.p !== undefined) { P.cart[Number(t.dataset.p)].qty++; renderOrder(); }
+      else if (t.dataset.m !== undefined) { var l = P.cart[Number(t.dataset.m)]; l.qty--; if (l.qty < 1) P.cart.splice(Number(t.dataset.m), 1); renderOrder(); }
+      else if (t.dataset.ch) { P.chan = t.dataset.ch; renderOrder(); }
+      else if (t.dataset.pay) { P.pay = t.dataset.pay; renderOrder(); }
+      else if (t.id === 'pSave') saveOrder();
+    };
+  }
+  function needWho(then){ if (who()) { then(); return; } pickName(function (n) { lsSet(K.who, {name: n, date: today()}); renderTop(); then(); }); }
+  function saveOrder(){
+    if (!P.cart.length) return;
+    needWho(function () {
+      var c = lsGet(K.n, {}); if (c.date !== today()) c = {date: today(), n: 0}; c.n++; lsSet(K.n, c);
+      var tmp = 'P' + c.n, amt = cartTotal(), fpv = P.chan === 'Foodpanda' || P.chan === 'Vester';
+      var job = {fn: 'saveOrder', amt: amt, change: 0, tmp: tmp, payload: {
+        shop: shopCode(), date: today(), atMs: nowMs(), reqId: rid(),
+        lines: P.cart.map(function (l) { return {name: l.name, cat: l.cat, qty: l.qty, disc: 0, amt: price(l) * l.qty}; }),
+        payment: fpv ? 'Cash' : P.pay, channel: P.chan, stub: 0, notes: (P.note || '').trim(), staff: who()}};
+      addJob(job);
+      P.list.unshift({ref: job.payload.reqId, tmp: tmp, at: hhmm(), shop: job.payload.shop, date: job.payload.date, items: job.payload.lines.map(function (l) { return l.qty + '× ' + l.name; }).join(', '), amt: amt, pay: fpv ? P.chan : P.pay, note: job.payload.notes, served: ''});
+      lsSet(K.list, P.list);
+      var ch = P.pay === 'Cash' && !fpv && Number(P.cashIn) > amt ? ' · Change ' + peso(Number(P.cashIn) - amt) : '';
+      P.cart = []; P.note = ''; P.cashIn = ''; P.pay = 'Cash'; P.chan = 'Walk-in'; P.q = '';
+      renderPad(); toast('Order #' + tmp + ' saved on this phone ✓ ' + peso(amt) + ch + ' — goes to the POS by itself');
+    });
+  }
+  function renderList(){
+    var mine = P.list.filter(function (o) { return o.date === today(); });
+    $('pBody').innerHTML = '<div class="box"><b>Orders taken on this pad today (' + mine.length + ')</b><div class="muted">These go into the POS by themselves with the same number order. Tap ✓ Served when it is handed to the customer.</div>' +
+      (mine.length ? mine.map(function (o, k) { return '<div class="ord"><div class="no">#' + esc(o.tmp) + '<div class="muted">' + esc(o.at) + '</div></div><div class="its">' + esc(o.items) + ' · <b>' + peso(o.amt) + '</b> · ' + esc(o.shop) + ' · ' + esc(o.pay) + (o.note ? '<br>📝 ' + esc(o.note) : '') + '</div>' +
+        '<button class="srv' + (o.served ? ' done' : '') + '" data-k="' + P.list.indexOf(o) + '">' + (o.served ? '✓ ' + esc(o.served) : '✓ Served') + '</button></div>'; }).join('') : '<div class="muted" style="margin-top:8px">No orders on the pad yet.</div>') + '</div>';
+    $('pBody').onclick = function (e) {
+      var t = e.target.closest('[data-k]'); if (!t) return; var o = P.list[Number(t.dataset.k)]; if (!o || o.served) return;
+      needWho(function () {
+        o.served = hhmm(); lsSet(K.list, P.list);
+        addJob({fn: 'markServed', amt: 0, payload: {shop: o.shop, date: o.date, no: 0, ref: o.ref, served: true, at: o.served, reqId: rid()}});
+        renderList(); toast('#' + o.tmp + ' served ✓');
+      });
+    };
+  }
+  function renderExp(){
+    var sh = shop(), pays = ['Cash', 'GCash'].concat(P.pos.ownerPay || []);
+    $('pBody').innerHTML = '<div class="box"><b>Add an expense (' + esc(shopCode()) + ')</b>' +
+      '<label>Item</label><input id="eItem" placeholder="e.g. ice, milk">' +
+      '<label>Category</label><div class="cats" style="flex-wrap:wrap">' + (sh.expCats || []).map(function (c) { return '<button class="chip' + (c === P.eCat ? ' on' : '') + '" data-ec="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</div>' +
+      '<div class="grid2"><div><label>Qty</label><input id="eQty" type="number" inputmode="decimal" value="1"></div><div><label>Price each</label><input id="ePrice" type="number" inputmode="decimal"></div></div>' +
+      '<label>Paid with</label><div class="cats">' + pays.map(function (p) { return '<button class="chip' + (p === P.ePaid ? ' on' : '') + '" data-ep="' + esc(p) + '">' + esc(p === 'Cash' ? 'Drawer' : p) + '</button>'; }).join('') + '</div>' +
+      '<label>Note</label><input id="eNote">' +
+      '<button class="big" id="eSave">Save expense</button></div>';
+    $('pBody').onclick = function (e) {
+      var t = e.target.closest('button'); if (!t) return;
+      if (t.dataset.ec) { P.eCat = t.dataset.ec; [].forEach.call(document.querySelectorAll('[data-ec]'), function (x) { x.classList.toggle('on', x === t); }); }
+      else if (t.dataset.ep) { P.ePaid = t.dataset.ep; [].forEach.call(document.querySelectorAll('[data-ep]'), function (x) { x.classList.toggle('on', x === t); }); }
+      else if (t.id === 'eSave') {
+        var price = $('ePrice').value, qty = $('eQty').value || 1, item = $('eItem').value.trim(), note = $('eNote').value.trim();
+        if (!price) { toast('Add the price first'); return; }
+        if (!P.eCat) { toast('Pick a category'); return; }
+        needWho(function () {
+          var amt = (Number(qty) || 1) * (Number(price) || 0);
+          addJob({fn: 'saveExpense', amt: amt, payload: {shop: shopCode(), date: today(), item: item, cat: P.eCat, qty: qty, price: price, notes: note, staff: who(), paid: P.ePaid, reqId: rid()}});
+          P.eCat = ''; P.ePaid = 'Cash'; renderExp(); toast('Expense saved on this phone ✓ ' + peso(amt) + ' — goes to the POS by itself');
+        });
+      }
+    };
+  }
+  function renderTime(){
+    var shifts = (P.pos && P.pos.shifts) || [];
+    $('pBody').innerHTML = '<div class="box"><b>⏱ Time in / out</b><div class="muted">Saved with the real time you tap now — it goes to the POS by itself.</div>' +
+      '<label>Shift (for Time IN)</label><div class="cats" style="flex-wrap:wrap">' + shifts.map(function (x) { return '<button class="chip' + (x === P.shift ? ' on' : '') + '" data-sh="' + esc(x) + '">' + esc(x) + '</button>'; }).join('') + '</div>' +
+      '<div class="grid2"><button class="big" id="tIn">Time IN</button><button class="big" id="tOut" style="background:var(--brown)">Time OUT</button></div></div>';
+    $('pBody').onclick = function (e) {
+      var t = e.target.closest('button'); if (!t) return;
+      if (t.dataset.sh) { P.shift = t.dataset.sh; renderTime(); return; }
+      if (t.id !== 'tIn' && t.id !== 'tOut') return;
+      var action = t.id === 'tIn' ? 'in' : 'out';
+      if (action === 'in' && !P.shift) { toast('Pick your shift first'); return; }
+      pickName(function (n, pin) {
+        addJob({fn: 'punchTime', amt: 0, payload: {name: n, action: action, shift: action === 'in' ? P.shift : '', shop: shopCode(), pin: pin || '', at: nowMs(), reqId: rid()}});
+        if (action === 'in') lsSet(K.who, {name: n, date: today()});
+        else if (who() === n) lsSet(K.who, null);
+        renderPad(); toast('⏱ ' + n + ' time ' + action.toUpperCase() + ' ' + hhmm() + ' saved on this phone ✓');
+      }, 'Time ' + action.toUpperCase() + ' — pick your name');
+    };
+  }
+
+  /* name + LANTAW ID (checked against the scrambled copy this phone keeps from earlier sign-ins) */
+  function hashPin(name, pin){
+    try { return crypto.subtle.digest('SHA-256', new TextEncoder().encode('lantaw3|' + String(name).toLowerCase() + '|' + pin)).then(function (b) { return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }); }
+    catch (e) { return Promise.resolve(''); }
+  }
+  function pickName(done, title){
+    var names = ((P.pos && P.pos.staff) || []).concat((P.pos && P.pos.owners) || []);
+    $('pinBox').innerHTML = '<b>' + esc(title || 'Who is on the counter?') + '</b><div class="names">' + names.map(function (n) { return '<button class="chip" data-n="' + esc(n) + '">' + esc(n) + '</button>'; }).join('') + '</div><button class="chip" style="margin-top:12px" data-x="1">Cancel</button>';
+    $('pinM').classList.add('on');
+    $('pinBox').onclick = function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.x) { $('pinM').classList.remove('on'); return; }
+      if (b.dataset.n) askPin(b.dataset.n, done);
+    };
+  }
+  function askPin(name, done){
+    var known = ((P.pos && P.pos.pins) || {})[name.toLowerCase()], val = '';
+    function draw(msg){
+      $('pinBox').innerHTML = '<b>' + esc(name) + ', enter your LANTAW ID</b>' + (known ? '' : '<div class="warnbox">This phone has not seen your ID before (no signal to check it). It will be checked when it reaches the POS.</div>') +
+        '<div class="dots">' + (val.replace(/./g, '●') || '&nbsp;') + '</div><div class="muted" style="text-align:center;color:var(--bad)">' + esc(msg || '') + '</div>' +
+        '<div class="keys">' + [1,2,3,4,5,6,7,8,9,'⌫',0,'OK'].map(function (k) { return '<button data-k="' + k + '">' + k + '</button>'; }).join('') + '</div><button class="chip" style="margin-top:12px" data-x="1">Cancel</button>';
+    }
+    draw();
+    $('pinBox').onclick = function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.x) { $('pinM').classList.remove('on'); return; }
+      var k = b.dataset.k;
+      if (k === '⌫') { val = val.slice(0, -1); draw(); return; }
+      if (k !== 'OK') { if (val.length < 8) val += k; draw(); return; }
+      if (val.length < 3) { draw('Type your ID'); return; }
+      if (!known) { $('pinM').classList.remove('on'); done(name, val); return; }
+      hashPin(name, val).then(function (h) {
+        if (h === known) { $('pinM').classList.remove('on'); done(name, val); }
+        else { val = ''; draw('Wrong ID — try again'); }
+      });
+    };
+  }
+  renderWait();
+</script>
+</body>
+</html>
