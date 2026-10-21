@@ -551,18 +551,18 @@ body.shop-BH h1{color:#1D4ED8}
       return '<div class="ord' + (w >= 10 ? ' late' : '') + '"><div class="no">#' + esc(o.tmp) + '<small>' + esc(o.at) + '</small><button data-show="' + P.list.indexOf(o) + '" style="margin-top:6px;padding:5px 8px;border-radius:8px;border:1.5px solid var(--tan);background:var(--paper);font-size:12px;font-weight:800;cursor:pointer">📣 Show</button></div>' +
         '<div class="its">' + o.items.map(function (i) { return '<b>' + i.qty + '×</b> ' + esc(i.name); }).join('<br>') + (o.note ? '<div class="onote">📝 ' + esc(o.note) + '</div>' : '') + tag(o) + ' ' + sync(o) +
         '<div class="wait ' + (w >= 10 ? 'long' : w >= 7 ? 'warn' : '') + '">' + (w < 1 ? 'Just now' : 'Waiting ' + w + ' min') + ' · ' + esc(o.shop) + '</div></div>' +
-        '<div class="obtns"><button class="srv" data-k="' + P.list.indexOf(o) + '">✓ Served</button></div></div>';
+        '<div class="obtns">' + '<button class="more" data-del="' + P.list.indexOf(o) + '" title="Cancel this order">🗑</button>' + '<button class="srv" data-k="' + P.list.indexOf(o) + '">✓ Served</button></div></div>';
     };
     var row = function (o) {
       return '<div class="ord done"><div class="no">#' + esc(o.tmp) + '<small>' + esc(o.at) + '</small></div><div class="its">' + o.items.map(function (i) { return i.qty + '× ' + esc(i.name); }).join(', ') + ' · ' + peso(o.amt) +
         (o.note ? ' <span class="rq">📝 ' + esc(o.note) + '</span>' : '') + tag(o) + ' · <b style="color:var(--good)">✓ served ' + esc(o.served) + '</b> ' + sync(o) + '</div>' +
-        '<div class="obtns"><button class="srv" data-k="' + P.list.indexOf(o) + '" data-undo="1">Undo</button></div></div>';
+        '<div class="obtns">' + '<button class="more" data-del="' + P.list.indexOf(o) + '" title="Cancel this order">🗑</button>' + '<button class="srv" data-k="' + P.list.indexOf(o) + '" data-undo="1">Undo</button></div></div>';
     };
     $('pOrdList').innerHTML = (todo.length ? '<div class="rsub">☕ To make (' + todo.length + ') — oldest first</div>' + todo.map(card).join('') : (mine.length ? '<div class="empty">✓ All orders served</div>' : '<div class="empty">No orders on this phone yet</div>')) +
       (done.length ? '<div class="rsub">Served (' + done.length + ')</div>' + done.map(row).join('') : '');
     var ex = P.exps.filter(function (x) { return x.date === d; });
     $('pExpList').innerHTML = ex.length ? '<div class="rsub">Expenses on this phone</div>' + ex.map(function (x) {
-      return '<div class="rl"><span><span class="x">Expense</span> · ' + esc(x.item || x.cat) + ' ×' + esc(x.qty) + (x.paid !== 'Cash' ? ' <span class="' + (x.paid === 'GCash' ? 'gc' : 'pd') + '">' + esc(x.paid === 'GCash' ? 'GCash' : 'Paid by ' + x.paid) + '</span>' : '') + ' ' + (pending(x.ref) ? '<span class="synced wait">📴 on this phone</span>' : '<span class="synced ok">✓ in the POS</span>') + '</span><b class="x">' + peso(x.amt) + '</b></div>'; }).join('') : '';
+      return '<div class="rl"><span><span class="x">Expense</span> · ' + esc(x.item || x.cat) + ' ×' + esc(x.qty) + (x.paid !== 'Cash' ? ' <span class="' + (x.paid === 'GCash' ? 'gc' : 'pd') + '">' + esc(x.paid === 'GCash' ? 'GCash' : 'Paid by ' + x.paid) + '</span>' : '') + ' ' + (pending(x.ref) ? '<span class="synced wait">📴 on this phone</span>' : '<span class="synced ok">✓ in the POS</span>') + '</span><span><b class="x">' + peso(x.amt) + '</b> <button class="mini" data-xdel="' + P.exps.indexOf(x) + '" title="Cancel this expense">🗑</button></span></div>'; }).join('') : '';
     $('pMake').textContent = todo.length ? '☕ To make: ' + todo.length : '☕ All served';
     $('pMake').classList.toggle('zero', !todo.length);
   }
@@ -570,6 +570,7 @@ body.shop-BH h1{color:#1D4ED8}
   $('pMake').onclick = function () { P.mode = 'sale'; renderAll(); $('pRecent').scrollIntoView({behavior: 'smooth', block: 'start'}); };
   $('pOrdList').onclick = function (e) {
     var sb = e.target.closest('[data-show]'); if (sb) { showBig(P.list[Number(sb.dataset.show)]); return; }
+    var db = e.target.closest('[data-del]'); if (db) { cancelOrder(P.list[Number(db.dataset.del)]); return; }
     var b = e.target.closest('.srv'); if (!b) return; var o = P.list[Number(b.dataset.k)]; if (!o) return;
     var undo = !!b.dataset.undo;
     needWho(function () {
@@ -584,6 +585,26 @@ body.shop-BH h1{color:#1D4ED8}
       }
       lsSet(K.list, P.list); renderWait(); renderOrders();
     });
+  };
+
+  /* 🗑 cancel a mistake. Still on this phone = removed completely (it never reaches the sheet).
+     Already in the POS = it must be voided there (⋯ → Void), so the sheet keeps a record. */
+  function cancelOrder(o){
+    if (!o) return;
+    var what = '#' + o.tmp + ' · ' + o.items.map(function (i) { return i.qty + '× ' + i.name; }).join(', ') + ' · ' + peso(o.amt);
+    if (!pending(o.ref)) { toast('#' + o.tmp + ' is already in the POS — open the POS and tap ⋯ → 🚫 Void on it.'); return; }
+    if (!confirm('Cancel this order?\n' + what + '\n\nIt is not in the POS yet, so it will be removed completely.')) return;
+    P.jobs = P.jobs.filter(function (j) { return j.payload.reqId !== o.ref && j.payload.ref !== o.ref; }); saveJobs();
+    P.list.splice(P.list.indexOf(o), 1); lsSet(K.list, P.list);
+    renderWait(); renderOrders(); toast('🗑 Order #' + o.tmp + ' cancelled — it will not be saved.');
+  }
+  $('pExpList').onclick = function (e) {
+    var b = e.target.closest('[data-xdel]'); if (!b) return; var x = P.exps[Number(b.dataset.xdel)]; if (!x) return;
+    if (!pending(x.ref)) { toast('This expense is already in the POS — ask Misty to fix it in the sheet.'); return; }
+    if (!confirm('Cancel this expense?\n' + (x.item || x.cat) + ' · ' + peso(x.amt) + '\n\nIt is not in the POS yet, so it will be removed completely.')) return;
+    P.jobs = P.jobs.filter(function (j) { return j.payload.reqId !== x.ref; }); saveJobs();
+    P.exps.splice(P.exps.indexOf(x), 1); lsSet(K.exps, P.exps);
+    renderWait(); renderOrders(); toast('🗑 Expense cancelled — it will not be saved.');
   };
 
   /* 📣 one order full-screen in big letters (easy to read across the counter) */
