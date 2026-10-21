@@ -541,8 +541,9 @@ body.shop-BH h1{color:#1D4ED8}
     var d = today();
     P.list = P.list.filter(function (o) { return o.date >= fmtD.format(new Date(nowMs() - 2 * 864e5)); });   // keep 2 days
     var mine = P.list.filter(function (o) { return o.date === d; });
-    var todo = mine.filter(function (o) { return !o.served; }).slice().reverse();      // oldest first = make first
-    var done = mine.filter(function (o) { return o.served; });
+    var todo = mine.filter(function (o) { return !o.served && !o.voided; }).slice().reverse();      // oldest first = make first
+    var done = mine.filter(function (o) { return o.served && !o.voided; });
+    var voids = mine.filter(function (o) { return o.voided; });
     var nowM = mins(hhmm());
     var sync = function (o) { return pending(o.ref) ? '<span class="synced wait">📴 on this phone</span>' : '<span class="synced ok">✓ in the POS</span>'; };
     var tag = function (o) { return (o.pay === 'GCash' ? '<span class="gc">GCash</span>' : o.pay !== 'Cash' && o.pay !== 'Walk-in' ? '<span class="pd">' + esc(o.pay) + (owners().indexOf(o.pay) > -1 ? ' payables' : '') + '</span>' : ''); };
@@ -551,18 +552,21 @@ body.shop-BH h1{color:#1D4ED8}
       return '<div class="ord' + (w >= 10 ? ' late' : '') + '"><div class="no">#' + esc(o.tmp) + '<small>' + esc(o.at) + '</small><button data-show="' + P.list.indexOf(o) + '" style="margin-top:6px;padding:5px 8px;border-radius:8px;border:1.5px solid var(--tan);background:var(--paper);font-size:12px;font-weight:800;cursor:pointer">📣 Show</button></div>' +
         '<div class="its">' + o.items.map(function (i) { return '<b>' + i.qty + '×</b> ' + esc(i.name); }).join('<br>') + (o.note ? '<div class="onote">📝 ' + esc(o.note) + '</div>' : '') + tag(o) + ' ' + sync(o) +
         '<div class="wait ' + (w >= 10 ? 'long' : w >= 7 ? 'warn' : '') + '">' + (w < 1 ? 'Just now' : 'Waiting ' + w + ' min') + ' · ' + esc(o.shop) + '</div></div>' +
-        '<div class="obtns"><button class="srv" data-k="' + P.list.indexOf(o) + '">✓ Served</button></div></div>';
+        '<div class="obtns">' + '<button class="more" data-del="' + P.list.indexOf(o) + '" title="Void this order">🚫</button>' + '<button class="srv" data-k="' + P.list.indexOf(o) + '">✓ Served</button></div></div>';
     };
     var row = function (o) {
       return '<div class="ord done"><div class="no">#' + esc(o.tmp) + '<small>' + esc(o.at) + '</small></div><div class="its">' + o.items.map(function (i) { return i.qty + '× ' + esc(i.name); }).join(', ') + ' · ' + peso(o.amt) +
         (o.note ? ' <span class="rq">📝 ' + esc(o.note) + '</span>' : '') + tag(o) + ' · <b style="color:var(--good)">✓ served ' + esc(o.served) + '</b> ' + sync(o) + '</div>' +
-        '<div class="obtns"><button class="srv" data-k="' + P.list.indexOf(o) + '" data-undo="1">Undo</button></div></div>';
+        '<div class="obtns">' + '<button class="more" data-del="' + P.list.indexOf(o) + '" title="Void this order">🚫</button>' + '<button class="srv" data-k="' + P.list.indexOf(o) + '" data-undo="1">Undo</button></div></div>';
     };
-    $('pOrdList').innerHTML = (todo.length ? '<div class="rsub">☕ To make (' + todo.length + ') — oldest first</div>' + todo.map(card).join('') : (mine.length ? '<div class="empty">✓ All orders served</div>' : '<div class="empty">No orders on this phone yet</div>')) +
-      (done.length ? '<div class="rsub">Served (' + done.length + ')</div>' + done.map(row).join('') : '');
+    $('pOrdList').innerHTML = (todo.length ? '<div class="rsub">☕ To make (' + todo.length + ') — oldest first</div>' + todo.map(card).join('') : (done.length ? '<div class="empty">✓ All orders served</div>' : '<div class="empty">No orders on this phone yet</div>')) +
+      (done.length ? '<div class="rsub">Served (' + done.length + ')</div>' + done.map(row).join('') : '') +
+      (voids.length ? '<div class="rsub">🚫 Voided (' + voids.length + ')</div>' + voids.map(function (o) {
+        return '<div class="ord done" style="opacity:.7"><div class="no">#' + esc(o.tmp) + '<small>' + esc(o.at) + '</small></div><div class="its">' + o.items.map(function (i) { return i.qty + '× ' + esc(i.name); }).join(', ') +
+          ' · <s style="color:#B91C1C">' + peso(o.amt) + '</s> · ' + esc(o.voided) + ' ' + (pending(o.voidRef) ? '<span class="synced wait">📴 on this phone</span>' : '<span class="synced ok">✓ in the POS</span>') + '</div><span></span></div>'; }).join('') : '');
     var ex = P.exps.filter(function (x) { return x.date === d; });
     $('pExpList').innerHTML = ex.length ? '<div class="rsub">Expenses on this phone</div>' + ex.map(function (x) {
-      return '<div class="rl"><span><span class="x">Expense</span> · ' + esc(x.item || x.cat) + ' ×' + esc(x.qty) + (x.paid !== 'Cash' ? ' <span class="' + (x.paid === 'GCash' ? 'gc' : 'pd') + '">' + esc(x.paid === 'GCash' ? 'GCash' : 'Paid by ' + x.paid) + '</span>' : '') + ' ' + (pending(x.ref) ? '<span class="synced wait">📴 on this phone</span>' : '<span class="synced ok">✓ in the POS</span>') + '</span><b class="x">' + peso(x.amt) + '</b></div>'; }).join('') : '';
+      return '<div class="rl"><span><span class="x">Expense</span> · ' + esc(x.item || x.cat) + ' ×' + esc(x.qty) + (x.paid !== 'Cash' ? ' <span class="' + (x.paid === 'GCash' ? 'gc' : 'pd') + '">' + esc(x.paid === 'GCash' ? 'GCash' : 'Paid by ' + x.paid) + '</span>' : '') + ' ' + (pending(x.ref) ? '<span class="synced wait">📴 on this phone</span>' : '<span class="synced ok">✓ in the POS</span>') + '</span><span><b class="x">' + peso(x.amt) + '</b> <button class="mini" data-xdel="' + P.exps.indexOf(x) + '" title="Cancel this expense">🗑</button></span></div>'; }).join('') : '';
     $('pMake').textContent = todo.length ? '☕ To make: ' + todo.length : '☕ All served';
     $('pMake').classList.toggle('zero', !todo.length);
   }
@@ -570,6 +574,7 @@ body.shop-BH h1{color:#1D4ED8}
   $('pMake').onclick = function () { P.mode = 'sale'; renderAll(); $('pRecent').scrollIntoView({behavior: 'smooth', block: 'start'}); };
   $('pOrdList').onclick = function (e) {
     var sb = e.target.closest('[data-show]'); if (sb) { showBig(P.list[Number(sb.dataset.show)]); return; }
+    var db = e.target.closest('[data-del]'); if (db) { cancelOrder(P.list[Number(db.dataset.del)]); return; }
     var b = e.target.closest('.srv'); if (!b) return; var o = P.list[Number(b.dataset.k)]; if (!o) return;
     var undo = !!b.dataset.undo;
     needWho(function () {
@@ -584,6 +589,44 @@ body.shop-BH h1{color:#1D4ED8}
       }
       lsSet(K.list, P.list); renderWait(); renderOrders();
     });
+  };
+
+  /* 🚫 VOID a mistake (same as the POS: ⋯ → Void + reason). The order still goes to the sheet and is marked VOID there,
+     so owners keep a record (QTY 0, reason, staff, time) — nothing disappears without a trace. */
+  var VOID_WHY = ['Customer left', 'Wrong order', 'Duplicate entry', 'Changed order'];
+  function cancelOrder(o){
+    if (!o || o.voided) return;
+    var why = '';
+    function draw(){
+      modal('<div class="eyebrow">LANTAW³ KAPEHAN POS · OFFLINE · ORDER</div><h2 class="mh">#' + esc(o.tmp) + ' · ' + peso(o.amt) + '</h2>' +
+        '<div class="mnote" style="margin-top:0;font-size:14px;color:var(--ink)">' + o.items.map(function (i) { return i.qty + '× ' + esc(i.name); }).join(', ') + '</div>' +
+        '<label class="l">🚫 Void — why?</label><div class="chips" style="flex-wrap:wrap">' + VOID_WHY.map(function (w) { return '<button class="chip' + (w === why ? ' on' : '') + '" data-w="' + esc(w) + '">' + esc(w) + '</button>'; }).join('') + '</div>' +
+        '<input id="pVoidOther" placeholder="Other reason (optional)" style="margin-top:6px">' +
+        '<button class="save" data-go="1" style="background:#B91C1C">🚫 Void this order</button><button class="mini" style="margin-top:12px" data-x="1">Cancel</button>');
+      $('pModalBox').onclick = function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        if (b.dataset.x) { closeModal(); return; }
+        if (b.dataset.w) { why = b.dataset.w; [].forEach.call($('pModalBox').querySelectorAll('[data-w]'), function (x) { x.classList.toggle('on', x === b); }); return; }
+        if (!b.dataset.go) return;
+        var reason = ($('pVoidOther').value.trim() || why);
+        if (!reason) { toast('Pick why it is voided'); return; }
+        needWho(function () {
+          o.voided = reason; o.voidRef = rid();
+          addJob({fn: 'orderAction', amt: 0, payload: {shop: o.shop, date: o.date, no: 0, ref: o.ref, action: 'void', reason: reason, staff: who(), reqId: o.voidRef}});
+          lsSet(K.list, P.list); closeModal(); renderWait(); renderOrders();
+          toast('🚫 Order #' + o.tmp + ' voided (' + reason + ') — the sheet will show it as VOID.');
+        });
+      };
+    }
+    draw();
+  }
+  $('pExpList').onclick = function (e) {
+    var b = e.target.closest('[data-xdel]'); if (!b) return; var x = P.exps[Number(b.dataset.xdel)]; if (!x) return;
+    if (!pending(x.ref)) { toast('This expense is already in the POS — ask Misty to fix it in the sheet.'); return; }
+    if (!confirm('Cancel this expense?\n' + (x.item || x.cat) + ' · ' + peso(x.amt) + '\n\nIt is not in the POS yet, so it will be removed completely.')) return;
+    P.jobs = P.jobs.filter(function (j) { return j.payload.reqId !== x.ref; }); saveJobs();
+    P.exps.splice(P.exps.indexOf(x), 1); lsSet(K.exps, P.exps);
+    renderWait(); renderOrders(); toast('🗑 Expense cancelled — it will not be saved.');
   };
 
   /* 📣 one order full-screen in big letters (easy to read across the counter) */
