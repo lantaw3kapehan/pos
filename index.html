@@ -457,7 +457,7 @@ body.shop-BH h1{color:#1D4ED8}
     $('pStubWrap').classList.toggle('hide', !sh.hasStub);
   }
   function renderPay(){
-    var own = owners(), opts = ['Cash', 'GCash'].concat(own);
+    var own = shopCode() === 'BH' ? owners() : [], opts = ['Cash', 'GCash'].concat(own);   /* owner payables: BH only */
     if (opts.indexOf(P.pay) < 0) P.pay = 'Cash';
     $('pPay').innerHTML = opts.map(function (p) { return '<button data-p="' + esc(p) + '" class="' + (p === P.pay ? 'on' : '') + (own.indexOf(p) > -1 ? ' own' : '') + '">' + (own.indexOf(p) > -1 ? esc(p) + ' payables' : p) + '</button>'; }).join('');
   }
