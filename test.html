@@ -246,6 +246,7 @@ body.shop-BH h1{color:#1D4ED8}
           <div id="pChanWrap"><label class="l">Channel</label><div class="seg small" id="pChan"></div></div>
           <label class="l" id="pPayLbl">Payment</label>
           <div class="seg small" id="pPay"></div>
+          <div id="pSplitWrap" class="hide"><label class="l">GCash part (₱)</label><input id="pSplitG" type="number" inputmode="decimal" placeholder="Amount paid by GCash"><div class="mnote" id="pSplitNote" style="font-weight:700"></div></div>
           <div class="mnote hide" id="pFpNote" style="font-weight:700;color:#B45309"></div>
           <div id="pStubWrap" class="hide">
             <label class="l">Stub (₱ off)</label>
@@ -457,9 +458,9 @@ body.shop-BH h1{color:#1D4ED8}
     $('pStubWrap').classList.toggle('hide', !sh.hasStub);
   }
   function renderPay(){
-    var own = shopCode() === 'BH' ? owners() : [], opts = ['Cash', 'GCash'].concat(own);   /* owner payables: BH only */
+    var own = shopCode() === 'BH' ? owners() : [], opts = ['Cash', 'GCash', 'Split'].concat(own);   /* owner payables: BH only; Split = Cash + GCash */
     if (opts.indexOf(P.pay) < 0) P.pay = 'Cash';
-    $('pPay').innerHTML = opts.map(function (p) { return '<button data-p="' + esc(p) + '" class="' + (p === P.pay ? 'on' : '') + (own.indexOf(p) > -1 ? ' own' : '') + '">' + (own.indexOf(p) > -1 ? esc(p) + ' payables' : p) + '</button>'; }).join('');
+    $('pPay').innerHTML = opts.map(function (p) { return '<button data-p="' + esc(p) + '" class="' + (p === P.pay ? 'on' : '') + (own.indexOf(p) > -1 ? ' own' : '') + '">' + (own.indexOf(p) > -1 ? esc(p) + ' payables' : p === 'Split' ? 'Cash + GCash' : p) + '</button>'; }).join('');
   }
   function renderCart(){
     var discs = shop().discounts || [0];
@@ -478,14 +479,19 @@ body.shop-BH h1{color:#1D4ED8}
     $('pSaveOrder').textContent = P.cart.length ? 'Save order · ' + peso(t) : 'Save order';
     $('pFpNote').textContent = P.chan === 'Vester' ? '🛵 Vester price (our price −₱15 per item). Vester pays weekly — not counted in today\'s drawer or GCash.' : '🛵 Recorded at OUR menu price. Foodpanda pays weekly — not counted in today\'s drawer or GCash.';
     $('pPayLbl').classList.toggle('hide', fp); $('pPay').classList.toggle('hide', fp); $('pFpNote').classList.toggle('hide', !fp);
-    $('pCashWrap').classList.toggle('hide', fp || P.pay !== 'Cash' || !P.cart.length);
+    $('pCashWrap').classList.toggle('hide', fp || (P.pay !== 'Cash' && P.pay !== 'Split') || !P.cart.length);
+    var sp = splitParts(), spOn = P.pay === 'Split' && !fp && P.cart.length > 0;
+    $('pSplitWrap').classList.toggle('hide', !spOn);
+    if (spOn) { $('pSplitNote').style.color = sp.ok ? 'var(--good)' : '#B45309'; $('pSplitNote').textContent = !sp.g ? 'Type how much the customer pays by GCash — the rest is cash.' : sp.ok ? 'Cash ' + peso(sp.c) + ' + GCash ' + peso(sp.g) + ' = ' + peso(sp.t) : 'GCash part must be more than ₱0 and less than ' + peso(sp.t); }
+    $('pQuick').classList.toggle('hide', P.pay === 'Split');
     var opts = [];
     if (t > 0) { opts.push(t); [50, 100, 500, 1000].forEach(function (st) { var v = Math.ceil(t / st) * st; if (v > t && opts.indexOf(v) < 0) opts.push(v); }); }
     $('pQuick').innerHTML = opts.slice(0, 5).map(function (v, i) { return '<button data-v="' + v + '">' + (i ? peso(v) : 'Exact') + '</button>'; }).join('');
     calcChange();
   }
+  function splitParts(){ var t = cartTotal(), g = Number(($('pSplitG') || {}).value) || 0; return {t: t, g: g, c: Math.max(0, t - g), ok: g > 0 && g < t}; }
   function calcChange(){
-    var c = Number($('pCashIn').value), t = cartTotal(), short = c && c < t;
+    var c = Number($('pCashIn').value), t = P.pay === 'Split' ? splitParts().c : cartTotal(), short = c && c < t;
     $('pChange').className = 'changebox' + (short ? ' short' : '');
     $('pChange').querySelector('span').textContent = short ? 'Short' : 'Change';
     $('pChange').querySelector('b').textContent = c ? peso(Math.abs(c - t)) : '—';
@@ -507,7 +513,8 @@ body.shop-BH h1{color:#1D4ED8}
   $('pLines').onclick = function (e) { var b = e.target.closest('.q'); if (!b) return; var l = P.cart[b.dataset.i]; l.qty += b.dataset.a === '+' ? 1 : -1; if (l.qty <= 0) P.cart.splice(b.dataset.i, 1); renderCart(); };
   $('pLines').onchange = function (e) { var s = e.target.closest('select'); if (!s) return; P.cart[s.dataset.i].disc = Number(s.value); renderCart(); };
   $('pChan').onclick = function (e) { var b = e.target.closest('button'); if (!b) return; P.chan = b.dataset.c; segOn('pChan', b); renderCart(); };
-  $('pPay').onclick = function (e) { var b = e.target.closest('button'); if (!b) return; P.pay = b.dataset.p; segOn('pPay', b); if (P.pay !== 'Cash') $('pCashIn').value = ''; renderCart(); };
+  $('pPay').onclick = function (e) { var b = e.target.closest('button'); if (!b) return; P.pay = b.dataset.p; segOn('pPay', b); if (P.pay !== 'Cash' && P.pay !== 'Split') $('pCashIn').value = ''; renderCart(); };
+  $('pSplitG').oninput = function () { renderCart(); };
   $('pStubSeg').onclick = function (e) { var b = e.target.closest('button'); if (!b) return; P.stub = Number(b.dataset.s); $('pStub').value = ''; segOn('pStubSeg', b); renderCart(); };
   $('pStub').oninput = function () { P.stub = Number($('pStub').value) || 0; renderCart(); };
   $('pQuick').onclick = function (e) { var b = e.target.closest('button'); if (!b) return; $('pCashIn').value = b.dataset.v; calcChange(); };
@@ -517,19 +524,37 @@ body.shop-BH h1{color:#1D4ED8}
 
   $('pSaveOrder').onclick = function () {
     if (!P.cart.length) return;
+    var fpv0 = P.chan === 'Foodpanda' || P.chan === 'Vester';
+    /* closed order bar: ask how the customer paid first, so nothing is saved as Cash by mistake */
+    if (!fpv0 && !P.payAsked && $('pCart').classList.contains('min')) {
+      var own = shopCode() === 'BH' ? owners() : [], opts = [['Cash', '💵 Cash'], ['GCash', '📱 GCash'], ['Split', '💵 + 📱 Cash + GCash']].concat(own.map(function (o) { return [o, o + ' payables']; }));
+      modal('<div class="eyebrow">LANTAW³ KAPEHAN POS · OFFLINE</div><h2 class="mh">How did the customer pay?</h2><div class="mnote" style="margin-top:0;font-size:18px"><b>' + peso(cartTotal()) + '</b></div>' +
+        opts.map(function (o) { return '<button class="save" data-pay="' + esc(o[0]) + '" style="margin-top:8px' + (o[0] === 'GCash' ? ';background:#1D4ED8' : '') + '">' + esc(o[1]) + '</button>'; }).join('') + '<button class="mini" style="margin-top:12px" data-x="1">Cancel</button>');
+      $('pModalBox').onclick = function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        closeModal(); if (b.dataset.x) return;
+        P.pay = b.dataset.pay; renderPay(); renderCart();
+        if (P.pay === 'Split') { $('pCart').classList.remove('min'); $('pCart').querySelector('.tg').textContent = '▼ hide'; setTimeout(function () { try { $('pSplitG').focus(); } catch (er) {} }, 100); return; }
+        P.payAsked = true; try { $('pSaveOrder').click(); } finally { P.payAsked = false; }
+      };
+      return;
+    }
+    if (P.pay === 'Split' && !fpv0) { var sp0 = splitParts(); if (!sp0.ok) { toast('Type the GCash part — more than ₱0 and less than ' + peso(sp0.t)); $('pCart').classList.remove('min'); try { $('pSplitG').focus(); } catch (er) {} return; } }
     needWho(function () {
       var c = lsGet(K.n, {}); if (c.date !== today()) c = {date: today(), n: 0}; c.n++; lsSet(K.n, c);
       var tmp = 'P' + c.n, amt = cartTotal(), fpv = P.chan === 'Foodpanda' || P.chan === 'Vester', cashIn = Number($('pCashIn').value);
-      var change = P.pay === 'Cash' && !fpv && cashIn > amt ? cashIn - amt : 0;
+      var spl = P.pay === 'Split' && !fpv ? splitParts() : null;
+      var due = spl ? spl.c : amt, change = (P.pay === 'Cash' || spl) && !fpv && cashIn > due ? cashIn - due : 0;
+      var notes = $('pNotes').value.trim(); if (spl) notes = (notes ? notes + ' · ' : '') + 'SPLIT G-Cash ₱' + spl.g;
       var job = {fn: 'saveOrder', amt: amt, change: change, tmp: tmp, payload: {
         shop: shopCode(), date: today(), atMs: nowMs(), reqId: rid(),
         lines: P.cart.map(function (l) { return {name: l.name, cat: l.cat, qty: l.qty, disc: l.disc, amt: linePrice(l) * l.qty * (1 - l.disc)}; }),
-        payment: fpv ? 'Cash' : P.pay, channel: P.chan, stub: shop().hasStub ? P.stub : 0, notes: $('pNotes').value.trim(), staff: who()}};
+        payment: fpv || spl ? 'Cash' : P.pay, channel: P.chan, stub: shop().hasStub ? P.stub : 0, notes: notes, staff: who(), split: spl ? spl.g : 0}};
       addJob(job);
       P.list.unshift({ref: job.payload.reqId, tmp: tmp, at: hhmm(), shop: job.payload.shop, date: job.payload.date, items: job.payload.lines.map(function (l) { return {name: l.name, qty: l.qty}; }), amt: amt,
-        pay: fpv ? P.chan : P.pay, note: job.payload.notes, served: '', servedRef: ''});
+        pay: fpv ? P.chan : spl ? 'Cash + GCash' : P.pay, note: $('pNotes').value.trim(), served: '', servedRef: ''});
       lsSet(K.list, P.list);
-      P.cart = []; $('pNotes').value = ''; $('pCashIn').value = ''; $('pStub').value = ''; P.stub = 0; segOn('pStubSeg', $('pStubSeg').querySelector('[data-s="0"]'));
+      P.cart = []; $('pNotes').value = ''; $('pCashIn').value = ''; $('pSplitG').value = ''; $('pStub').value = ''; P.stub = 0; segOn('pStubSeg', $('pStubSeg').querySelector('[data-s="0"]'));
       P.pay = 'Cash'; P.chan = 'Walk-in'; $('pSearch').value = '';
       renderAll();
       toast('Order #' + tmp + ' saved on this phone ✓ ' + peso(amt) + (change ? ' · Change ' + peso(change) : '') + ' — goes to the POS by itself');
