@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Lantaw³ POS</title>
 <meta name="theme-color" content="#FAF6EF">
 <meta name="mobile-web-app-capable" content="yes">
@@ -222,7 +222,7 @@ body.shop-BH h1{color:#1D4ED8}
       <img class="logo" id="pLogo" alt="Lantaw" src="icon-192.png">
       <div><div class="eyebrow">LANTAW³ KAPEHAN POS · OFFLINE</div><h1 id="pTitle">Take order</h1>
         <span id="pBadge" class="qb busy">📴 No signal</span>
-        <button class="who" id="pWho">On counter: <b id="pWhoName">—</b> · Change</button><button class="who clock" id="pClock">⏱ Time in / out</button><button class="who make zero" id="pMake">☕ To make: 0</button><button class="who" id="pRetry">↻ Try the POS again</button></div>
+        <button class="who" id="pWho">On counter: <b id="pWhoName">—</b> · Change</button><button class="who clock" id="pClock">⏱ Time in / out</button><button class="who" id="pStart">💵 Starting cash</button><button class="who make zero" id="pMake">☕ To make: 0</button><button class="who" id="pRetry">↻ Try the POS again</button></div>
     </div>
     <div class="row">
       <div class="seg" id="pShopSeg"></div>
@@ -722,6 +722,7 @@ body.shop-BH h1{color:#1D4ED8}
         if (b.dataset.sh) { pick = b.dataset.sh; draw(); return; }
         var action = b.dataset.a; if (!action) return;
         if (action === 'in' && !pick) { toast('Pick your shift first'); return; }
+        if (action === 'out' && !b.dataset.armed) { b.dataset.armed = '1'; b.textContent = '👉 Tap AGAIN to TIME OUT'; b.style.background = '#B45309'; setTimeout(function () { if (document.body.contains(b)) { delete b.dataset.armed; b.textContent = 'Time OUT'; b.style.background = ''; } }, 4000); return; }
         pickName('Time ' + action.toUpperCase() + ' — who are you?', function (n, pin) {
           addJob({fn: 'punchTime', amt: 0, payload: {name: n, action: action, shift: action === 'in' ? pick : '', shop: shopCode(), pin: pin || '', at: nowMs(), reqId: rid()}});
           if (action === 'in') lsSet(K.who, {name: n, date: today()}); else if (who() === n) lsSet(K.who, null);
@@ -731,6 +732,30 @@ body.shop-BH h1{color:#1D4ED8}
     }
     draw();
   };
+  /* v90: 💵 starting cash with no signal — saved on this phone, goes to the POS by itself */
+  $('pStart').onclick = function () {
+    needWho(function () {
+      var sc = shopCode();
+      modal('<div class="eyebrow">LANTAW³ KAPEHAN POS · OFFLINE</div><h2 class="mh">💵 Starting cash — ' + esc(sc) + '</h2>' +
+        '<div class="mnote" style="margin-top:0">Count the cash in the ' + esc(sc) + ' drawer before the first order. Saved on this phone and sent to the POS when signal is back.</div>' +
+        '<label class="l">Cash in the drawer now (₱)</label><input id="pStartIn" type="number" inputmode="decimal" placeholder="e.g. 1000" style="font-size:18px">' +
+        '<label class="l" style="margin-top:12px">GCash balance at opening (₱) — optional, BH + PU share one GCash</label><input id="pGStartIn" type="number" inputmode="decimal" placeholder="leave empty if already set">' +
+        '<div class="two" style="margin-top:14px"><button class="save" data-a="save" style="background:var(--good)">Save starting cash</button><button class="mini" data-x="1">Cancel</button></div>');
+      setTimeout(function () { try { $('pStartIn').focus(); } catch (e) {} }, 200);
+      $('pModalBox').onclick = function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        if (b.dataset.x) { closeModal(); return; }
+        var v = $('pStartIn').value, g = $('pGStartIn').value;
+        if (v === '' && g === '') { toast('Type the cash in the drawer'); return; }
+        if (v !== '') addJob({fn: 'setStartingMoney', amt: Number(v), payload: {shop: sc, date: today(), amount: Number(v), staff: who(), reqId: rid()}});
+        if (g !== '') addJob({fn: 'setStartingGcash', amt: Number(g), payload: {shop: sc, date: today(), amount: Number(g), staff: who(), reqId: rid()}});
+        closeModal(); renderAll();
+        toast('💵 Starting cash' + (v !== '' ? ' ₱' + Number(v).toLocaleString() : '') + (g !== '' ? ' · GCash ₱' + Number(g).toLocaleString() : '') + ' saved on this phone ✓');
+      };
+    });
+  };
+  /* v90: typing never zooms the screen in */
+  (function () { var st = document.createElement('style'); st.textContent = 'input,select,textarea{font-size:16px !important}'; document.head.appendChild(st); })();
   renderWait();
 </script>
 </body>
